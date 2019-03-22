@@ -1,0 +1,4 @@
+import jenkinsapi
+from jenkinsapi.jenkins import Jenkins
+server = Jenkins('http://localhost:8080',username='jyoti_signify1',password='Jyoti@Jenkin1')
+print(server.get_job("dtf_buildjob").get_last_buildnumber())

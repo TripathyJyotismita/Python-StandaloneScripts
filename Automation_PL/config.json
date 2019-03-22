@@ -1,0 +1,9 @@
+{
+	"user": "signifyjenkins",
+	"passwd": "signify",
+	"localhost":"http://localhost:8080",
+	"dbname":"testdb",
+	"dburl":"http://localhost:8086",
+	"file_name":"json_outfile\\apitest.json",
+	"apitoken":"11c76e015a70b50c46f601cde9dce95eae"
+}
