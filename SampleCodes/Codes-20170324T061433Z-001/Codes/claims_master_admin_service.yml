@@ -1,0 +1,121 @@
+config:
+  admin_server_dbhost: localhost
+  admin_server_dbschema: claims_master_prod
+  admin_server_dbuser: provider
+  admin_server_dbpassword: ')d2rop01'
+  google_username: 'whuser@castlighthealth.com'
+  google_password: ''
+prod:
+  ifc_manager:
+    stop_thread: False
+    run_status: active 
+    polling_interval: 900
+  claims_manager:
+    capabilities: ['stage', 'load', 'export', 'rehash']
+    #capabilities: ['stage']
+    file_types: "'medical_claims', 'pharmacy_claims'"
+    finalization_ic_ids: "29"
+    stop_thread: False
+    run_status: active 
+    polling_interval: 43200
+    temp_directory: /tmp
+    google_file_dashboard_key: 'tL7rWWDJpcyGgVtvDcNdE9Q'
+    jira_components: 'Data_load'
+    #other values are 'unidentified_file', Internal_data_request, Data_load, data_quality, data_ops_issues, External_data_issues 
+    stage_notification: False
+    load_notification: False
+    bulk_email_style: 'new_multiple_email'
+    #other values are 'old', 'new_single_email', 'new_multiple_email'
+    claims_export_directory: '/share/whdata/backup/phi/claims_archive/export_files'
+    #default value is '/tmp'
+    export_jira_project: "DATALOAD"
+    # other value NOPS
+    export_jira_components: 'claims_export'
+    # other value DataOperations
+    export_jira_assignee: "data_ops_queue"
+    export_jira_issuetype: Incident
+    export_jira_priority: 'Medium-P3'
+    load_jira_project: "DATALOAD"
+    load_jira_components: 'claims_load'
+    load_jira_issuetype: 'Task'
+    load_jira_assignee: "data_ops_queue"
+    load_jira_priority: 'Medium-P3'
+    drx_export_employer_ids: 64
+    drx_export_file_location: /share/rx_data/export/drx/
+  claims_file_manager:
+    stop_thread: False
+    run_status: active
+    polling_interval: 1800
+    first_time_file_modification_max_days: 70
+    file_modification_max_seconds: 3600
+    file_modification_min_seconds: 60
+    bulk_email_style: 'new_multiple_email'
+    #other values are 'old', 'new_multiple_email'
+    skip_file_extensions: '.sig'
+    is_skip_some_file_extensions: True
+  all_file_manager:
+    #supported format is '/dir1, /dir2/dir3'
+    #don't use trailing '/' in the directory name
+    monitor_dirs: '/home/sftpuser'
+    #supported format is '.bashrc, .profile, .ssh'
+    file_exceptions: '.bashrc, .bash_profile, .bash_logout, .bash_history, .cache, .DS_Store, .emacs, .profile, .vimrc, .viminfo, .swp, .sftp, .ssh, sftp_notifier.pyc, sftp_notifier.py, 30days, this_is_a_test.file'
+    file_substring_exceptions: '_tag, .swp, .ctl, _CNTLRPT, _Control, .sig'
+    directory_exceptions: '.sftp, /home/sftpuser/incentivedelivery1, /home/sftpuser/clhtest1/upload, /home/sftpuser/clh_test_accounts, /home/sftpuser/staywex1/download, /home/sftpuser/warehouse/dumps, /home/sftpuser/redbrick1/download, download'
+    claims_file_manager_time_gap_in_min: 60
+    notification_emails: 'vshah@castlighthealth.com, ypendse@castlighthealth.com' 
+    enable_permission_error_notification: False
+    jira_user: "ufo_service"
+    jira_password: "Xyz45240"
+    jira_assignee: "Tier2Support"
+    #watchers- comma separated user names
+    watchers: ""
+  sftp_file_manager:
+    dbschema: claims_master_prod
+    file_exceptions: '.vimrc, .viminfo, .swp, .sftp, .profile, .emacs, .ssh, .bashrc, .bash_profile, .bash_logout, .bash_history, .cache, .DS_Store'
+    is_process_hidden_files: True
+    enabled_connection_protocol: 'SFTP, HTTP'
+    user_notification_emails: 'clhnoc@castlighthealth.com, pnadella@castlighthealth.com, ypendse@castlighthealth.com'
+    dev_notification_emails: 'clhnoc@castlighthealth.com, vshah@castlighthealth.com, ypendse@castlighthealth.com, pnadella@castlighthealth.com' 
+    enable_permission_error_notification: True
+    sftp_jira_project: "DOPS"
+    sftp_jira_components: 'Data_load'
+    sftp_jira_assignee: "data_ops_queue"
+    sftp_jira_issuetype: Incident
+    sftp_jira_priority: 'Medium-P3'
+    incentive_jira_project: "DATALOAD"
+    incentive_jira_component: ''
+    incentive_jira_issuetype: Incident
+    incentive_jira_assignee: "whsr_queue"
+    incentive_jira_priority: 'Medium-P3'
+  nafo_monitor:
+    dbschema: claims_master_prod
+    dev_notification_emails: 'ypendse@castlighthealth.com, vshah@castlighthealth.com'
+    user_notification_emails: 'wh_ops@castlighthealth.com, mupadhye@castlighthealth.com, vsimha@castlighthealth.com'
+    nafo_jira_project: "DOPS"
+    nafo_jira_component: 'Data_load'
+    nafo_jira_issuetype: Incident
+    nafo_jira_assignee: "wh_ops"
+    nafo_jira_priority: 'Medium-P3'
+    nafo_jira_timetracking: "2d 1h 20m"
+    #watchers- comma separated user names
+    nafo_jira_watchers: "wh_ops"
+# JIRA related Settings
+JIRA:
+  jira_server: "https://jira.castlighthealth.com:8443"
+  jira_user: "wh_ops"
+  jira_password: "welcome"
+  jira_project: "DOPS"
+  jira_assignee: "data_ops_queue"
+  jira_failure_assignee: "hpopsqueue"
+  #watchers- comma separated user names
+  watchers: "wh_ops"
+#jira_timetracking format is "1d 1h 1m" 
+  jira_timetracking: "2d 1h 20m"
+# sample jira_issuetype values- Request, Feature Request, Story, Technical Story, Enhancement, Task, Incident, Epic, Bug, Story Element, Change Request
+  jira_issuetype: Incident
+#other values- '1-Critical', '2-High', '3-Medium', '4-Low'
+  severity_value: '3-Medium'
+#other values: QA, Development, Production, Demo, Signoff, Presales, Pre-Prod, Pre-Rel, N/A 
+  environment_value: 'N/A'
+#other values: 'unidentified_file', Internal_data_request 
+  components: 'unidentified_file'

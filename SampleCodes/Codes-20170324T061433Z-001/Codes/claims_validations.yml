@@ -1,0 +1,856 @@
+raw_validations:
+  field_catalog:
+    - provider_pin 
+    - provider_name 
+    - provider_specialty_code 
+    - provider_tax_id 
+    - provider_type 
+    - street_address 
+    - unit
+    - city 
+    - state 
+    - zip 
+    - provider_network_id 
+    - procedure_code 
+    - procedure_code_type 
+    - procedure_code_modifier 
+    - type_of_service 
+    - place_of_service 
+    - units_of_service 
+    - service_begin_date 
+    - service_end_date 
+    - payment_date 
+    - charged_amount  
+    - allowed_amount 
+    - savings_amount 
+    - cob_amount 
+    - coinsurance_amount 
+    - deductible_amount 
+    - paid_amount 
+    - copay_amount 
+    - out_of_network_indicator 
+    - national_drug_code
+    - not_covered_amount
+    - hra_amount
+    - member_first_name 
+    - member_last_name 
+    - member_ssn
+    - member_dob 
+    - member_gender 
+    - member_id 
+    - member_relationship 
+    - employee_first_name 
+    - employee_last_name 
+    - employee_ssn
+    - employee_zip_code 
+    - employee_state 
+    - ub92_revenue_center 
+    - imported_claim_id 
+    - imported_claim_file_id 
+    - diagnosis_code_1 
+    - diagnosis_code_2 
+    - diagnosis_code_3 
+    - diagnosis_code_4 
+    - diagnosis_related_group 
+    - major_diagnosis_code
+    - source_claim_id 
+    - source_claim_line_number
+    - secondary_procedure_code_type
+    - secondary_procedure_code
+    - secondary_procedure_code_modifier
+  queries:
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Number of raw medical claims',1, 1, 0) ON DUPLICATE KEY UPDATE percentage=0
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             count(*) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Number of raw medical claims'
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Number of distinct Providers OVER number of raw medical claims',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(count(distinct {provider_pin})/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Number of distinct Providers OVER number of raw medical claims'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with PO Box for address',1,1,1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({street_address} like '%box%',1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with PO Box for address'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Member Relationship',1,1,1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(count({member_relationship})/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Member Relationship'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with DRG Code not three characters long',1,1,0) ON DUPLICATE KEY UPDATE percentage=0
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             sum(if(length(trim({diagnosis_related_group}))<>3,1,0)) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with DRG Code not three characters long'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Units of Service',1,1,1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(count({units_of_service})/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Units of Service'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Procedure Code Modifier not two characters long',1,1,0) ON DUPLICATE KEY UPDATE percentage=0
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             sum(if(length(trim({procedure_code_modifier}))<>2,1,0)) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Procedure Code Modifier not two characters long'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Revenue Code not four characters long',1,1,0) ON DUPLICATE KEY UPDATE percentage=0
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             sum(if(length(trim({revenue_code}))<>4,1,0)) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Revenue Code not four characters long'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with valid Diagnostic Code',1,1,1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(count({diagnosis_code_1})/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with valid Diagnostic Code'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Procedure Code Type equal to Revenue',1,1,1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({procedure_code_type} = 'revenue',1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Procedure Code Type equal to Revenue'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with distinct Member',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(count(distinct {member_id})/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with distinct Member'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Provider ID',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({provider_pin} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Provider ID'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with DOB (blank) OR (before 1900) OR (after the current date)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT((sum(case When Year({member_dob}) < 1900 THEN 1 
+             When Year({member_dob}) > Year(CURDATE()) THEN 1  
+             When {member_dob} is null THEN 1 Else 0 END))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with DOB (blank) OR (before 1900) OR (after the current date)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Member ID',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({member_id} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Member ID'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Service Begin Date (blank) OR (before 1900) OR (after the current date)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT((sum(case when Year({service_begin_date}) < 1900 THEN 1 
+             When Year({service_begin_date}) > Year(CURDATE()) THEN 1 
+             When {service_begin_date} is null THEN 1 Else 0 END)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Service Begin Date (blank) OR (before 1900) OR (after the current date)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Service End Date (blank) OR (before 1900) OR (after the current date)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT((sum(case when Year({service_end_date}) < 1900 THEN 1 
+             When Year({service_end_date}) > Year(CURDATE()) THEN 1 
+             When {service_end_date} is null THEN 1 Else 0 END)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Service End Date (blank) OR (before 1900) OR (after the current date)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Allowed Amount (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if(IFNULL({allowed_amount},0) = 0,1,0)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Allowed Amount (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with COB (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF(IFNULL({cob_amount},0) = 0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with COB (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Coinsurance Amount (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF(IFNULL({coinsurance_amount},0) = 0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Coinsurance Amount (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Deductible Amount (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF(IFNULL({deductible_amount},0) = 0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Deductible Amount (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Paid Amount (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF(IFNULL({paid_amount},0) = 0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Paid Amount (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Copay Amount (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF(IFNULL({copay_amount},0) = 0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Copay Amount (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Not Covered Amount (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF(IFNULL({not_covered_amount},0) = 0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Not Covered Amount (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with HRA Amount (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if(IFNULL({hra_amount},0)=0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with HRA Amount (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Member Gender',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({member_gender} is null,1,0)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Member Gender'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Employee Name',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+     SELECT EMPLOYER_ID,
+            INSURANCE_COMPANY_ID,
+            icf.id,
+            vs.id as metric_id,
+            FORMAT(sum(if(CONCAT({employee_first_name},{employee_last_name}) is null,1,0))/count(*),3)  as metric_value,
+            '*' as percent_value,
+            DATE(NOW()) as created_at
+       FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+      WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Employee Name'
+        AND ict.duplicate_of_claim_id is null
+        AND ict.imported_claim_file_id=icf.id
+        AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Employee Zip',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({employee_zip_code} is null,1,0)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Employee Zip'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Patient First Name',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({member_first_name} is null,1,0)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Patient First Name'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Source Claim ID',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({source_claim_id} is NULL,1,0)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Source Claim ID'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with unknown Place of Service',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({place_of_service} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with unknown Place of Service'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Source Claim Line',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({source_claim_line_number} is null,1,0)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Source Claim Line'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Member Relationship',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({member_relationship} is null,1,0)) / count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Member Relationship'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Employee SSN',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({employee_ssn} is null or {employee_ssn}=0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Employee SSN'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims that are duplicates',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF(ict.duplicate_of_claim_id is null,0,1))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims that are duplicates'
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Provider Name AND blank Provider ID',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({provider_pin} is null,if({provider_name} is null,1,0),0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Provider Name AND blank Provider ID'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Provider Specialty',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({provider_specialty_code} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Provider Specialty'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with unidentifiable Provider Type for practicioner, facility, or group',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({provider_type} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with unidentifiable Provider Type for practicioner, facility, or group'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Provider Address',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({street_address} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Provider Address'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Provider Zip',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({zip} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Provider Zip'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Procedure Code Modifier',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({procedure_code_modifier} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Procedure Code Modifier'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Type of Service',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({type_of_service} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Type of Service'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Payment Date',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+            INSURANCE_COMPANY_ID,
+            icf.id,
+            vs.id as metric_id,
+            FORMAT(sum(IF({payment_date} is null,1,0))/count(*),3) as metric_value,
+            '*' as percent_value,
+            DATE(NOW()) as created_at
+       FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+      WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Payment Date'
+        AND ict.duplicate_of_claim_id is null
+        AND ict.imported_claim_file_id=icf.id
+        AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with unknown network indicator',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({out_of_network_indicator} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with unknown network indicator'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Savings Amount (blank) OR (equal to zero)',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({savings_amount} = 0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Savings Amount (blank) OR (equal to zero)'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Number of distinct Service Begin Date OVER number of raw medical claims',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(count(distinct {service_begin_date})/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Number of distinct Service Begin Date OVER number of raw medical claims'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Service Begin Date not equal to Service End Date',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(avg(case when {service_begin_date} != {service_end_date} then 1 else 0 end),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Service Begin Date not equal to Service End Date'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Procedure Code Modifier equal to 26 to indicate that the physician component of the claim is reported seperately',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({procedure_code_modifier} = '26',1,0 )) / count(*),3)  as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with Procedure Code Modifier equal to 26 to indicate that the physician component of the claim is reported seperately'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Number of raw medical claims OVER average number raw medical claims from previous three loads',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+                  INSURANCE_COMPANY_ID,
+                  icf.id,
+                  vs.id as metric_id,
+                  Format(((count(*)/count(distinct {payment_date}))-b.last_three_file_per_day_count)/b.last_three_file_per_day_count,3),
+                  '*' as percent_value,
+                  DATE(NOW()) as created_at
+             FROM IMPORTED_CLAIMS_TABLE ict, ( select avg(c.last_three_file_per_day_count) as last_three_file_per_day_count from 
+                  (select imported_claim_file_id, count(*)/count(distinct {payment_date}) as last_three_file_per_day_count from IMPORTED_CLAIMS_TABLE ict, 
+                  imported_claim_files icf where ict.imported_claim_file_id = icf.id and icf.employer_id = EMPLOYER_ID group by 1 order by 1 desc limit 3 offset 1) as c)  as b,
+                  validation_sql vs,
+                  imported_claim_files icf
+            WHERE vs.name = 'Ratio:Number of raw medical claims OVER average number raw medical claims from previous three loads'
+              AND ict.duplicate_of_claim_id is null
+              AND ict.imported_claim_file_id=icf.id
+              AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with Subscriber SSN equal to Member SSN, but Subcriber First Name not equal to Patient First Name',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1 
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+                  INSURANCE_COMPANY_ID,
+                  icf.id,
+                  vs.id as metric_id,
+                  Format(sum(IF({member_first_name} <> {employee_first_name},1,0))/count(*),3),
+                  '*' as percent_value,
+                  DATE(NOW()) as created_at
+             FROM IMPORTED_CLAIMS_TABLE ict, 
+                  validation_sql vs,
+                  imported_claim_files icf
+            WHERE vs.name = 'Ratio:Portion of raw medical claims with Subscriber SSN equal to Member SSN, but Subcriber First Name not equal to Patient First Name'
+              AND ict.duplicate_of_claim_id is null
+              AND ict.imported_claim_file_id=icf.id
+              AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+              AND {employee_ssn} = {member_ssn}
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Secondary Procedure Code',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({secondary_procedure_code} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Secondary Procedure Code'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with blank Secondary Procedure Code Modifier',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(IF({secondary_procedure_code_modifier} is null,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with blank Secondary Procedure Code Modifier'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with valid DRG Code',1, 1, 0) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+      INSURANCE_COMPANY_ID,
+      icf.id,
+      vs.id as metric_id,
+      FORMAT((sum(case when {diagnosis_related_group} is null THEN 0 
+      When {diagnosis_related_group} = '000' THEN 0 
+      Else 1 END)/count(*)),3) as metric_value,
+      '*' as percent_value,
+      DATE(NOW()) as created_at
+      FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+      WHERE vs.name = 'Ratio:Portion of raw medical claims with valid DRG Code'
+      AND ict.imported_claim_file_id=icf.id
+      AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of  raw medical claims with Patient First Name concatenated to Patient Last Name',1, 1, 0) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+      INSURANCE_COMPANY_ID,
+      icf.id,
+      vs.id as metric_id,
+      FORMAT((sum(if(INSTR({member_first_name}, ' ' ) != 0,1,0))/count(*)),3) as metric_value,
+      '*' as percent_value,
+      DATE(NOW()) as created_at
+      FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+      WHERE vs.name = 'Ratio:Portion of  raw medical claims with Patient First Name concatenated to Patient Last Name'
+      AND ict.imported_claim_file_id=icf.id
+      AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with invalid Subscriber SSN',1, 1, 0) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+      INSURANCE_COMPANY_ID,
+      icf.id,
+      vs.id as metric_id,
+      FORMAT((sum(if(length({employee_ssn})<9 or {employee_ssn} NOT REGEXP '[0-9]+$',1,0))/count(*)),3) as metric_value,
+      '*' as percent_value,
+      DATE(NOW()) as created_at
+      FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+      WHERE vs.name = 'Ratio:Portion of raw medical claims with invalid Subscriber SSN'
+      AND ict.imported_claim_file_id=icf.id
+      AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with distinct Employee SSN',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(count(distinct {employee_ssn})/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with distinct Employee SSN'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+    - INSERT INTO validation_sql (name, group_by_clause, report_group, percentage) VALUES ('Ratio:Portion of raw medical claims with units of service 0',1, 1, 1) ON DUPLICATE KEY UPDATE percentage=1
+    - REPLACE INTO data_quality_results (employer_id, insurance_company_id, imported_claim_file_id, metric_id, metric_value, percent_value,created_at)
+      SELECT EMPLOYER_ID,
+             INSURANCE_COMPANY_ID,
+             icf.id,
+             vs.id as metric_id,
+             FORMAT(sum(if({units_of_service} = 0,1,0))/count(*),3) as metric_value,
+             '*' as percent_value,
+             DATE(NOW()) as created_at
+        FROM IMPORTED_CLAIMS_TABLE ict, imported_claim_files icf, validation_sql vs
+       WHERE vs.name = 'Ratio:Portion of raw medical claims with units of service 0'
+         AND ict.duplicate_of_claim_id is null
+         AND ict.imported_claim_file_id=icf.id
+         AND ict.imported_claim_file_id=IMPORTED_CLAIM_FILE_ID
+

@@ -1,0 +1,62 @@
+import os
+import sys
+from datetime import date,timedelta
+import datetime
+import time
+import traceback
+import csv
+import commands
+import paramiko
+import smtplib
+import Unaddpayments
+os.environ['PYTHON_EGG_CACHE'] = os.getcwd()
+os.sys.path.append("/public/collections/codes")
+import MySQLdb
+conn = MySQLdb.connect('localhost','opsuser','OPS!@#','ukl_collections')
+curs = conn.cursor()
+curdate=datetime.datetime.now()
+today = datetime.datetime.now().strftime("%Y-%m-%d")
+yesterday=datetime.date.fromordinal(datetime.date.today().toordinal()-1).strftime("%Y-%m-%d")
+def loan_list():
+        original_query="select substr(create_dt,1,10),count(*),count(case when exists (select * from TMS_Data.Transactions where loan_id=a.loan_id and Debit=PaymentAmount and date(create_dt)=date(a.create_dt)) then loan_id end) as Successfully_Updated,count(case when not exists (select * from TMS_Data.Transactions where loan_id=a.loan_id and Debit=PaymentAmount and date(create_dt)=date(a.create_dt)) then loan_id end)NotUpdated from  ukl_collections.FileUpdate_Payment a where PaymentType='Debit' and date(create_dt)>=date(date_sub(now(), interval 5 day)) group by 1;"
+        res_loans=curs.execute(original_query)
+        res_loans_list=curs.fetchall()
+        print res_loans_list
+        query4="select loan_id from ukl_collections.ManualClosedLoans where Status='NotClosed';"
+        notclosed_loans=curs.execute(query4)
+        notclosed_loans_list=curs.fetchall()
+        print "Sivaram"
+        print notclosed_loans_list
+        for loans in notclosed_loans_list:
+                query5="select status_cd from GCMS_Data.gcm_case where entity_id='"+loans[0]+"' and case_type_cd='LOAN';"
+#               print query5
+                status=curs.execute(query5)
+                status_loan=curs.fetchall()
+                print str(status_loan[0][0])
+                if str(status_loan[0][0]) in ['POSTCLOSED','PRECLOSED','CLOSED']:
+                        update_query="update ukl_collections.ManualClosedLoans set Status='Closed' where loan_id='"+loans[0]+"';"
+                        print update_query
+                        curs.execute(update_query)
+        query6="select substr(insert_dt,1,10)Date,count(a.loan_id)NeedToClosed,count(case when status_cd like '%CLOSED%' then entity_id end)Closed,count(case when status_cd not like '%CLOSED%' then entity_id end)NotClosed from ManualClosedLoans a join GCMS_Data.gcm_case b on a.loan_id=b.entity_id where case_type_cd='LOAN' and date(insert_dt)!=curdate() group by 1;"
+        count_list=curs.execute(query6)
+        count_list_loans=curs.fetchall()
+        sub="Added Paymnets not updated in Transaction "+yesterday
+        Header=['Date','Total Inserted Loans','Successfully Updated','Not updated']
+        Header1=['Date','NeedToClosed','Closed','NotClosed']
+        sender="uklops@global-analytics.com"
+        receiver=['sivaram.mutharasu@global-analytics.com','senthil.selva@global-analytics.com']
+        mailcontent="Hi All</ br> <br>PFB the added payments not updated in Transactions till "+yesterday+"<br><br>"+Unaddpayments.gen_table(Header,res_loans_list)+"<br><br>PFB the number of loans those closed and need to Closed"+Unaddpayments.gen_table(Header1,count_list_loans)+"<br><br>Regards,<br> Uklops"
+        sendmailer(sender,receiver,sub,mailcontent)
+def sendmailer(sender,receiver,sub,htmlmsg):
+        message="""From:<uklops@global-analytics.com>
+To:sivaram.mutharasu@global-analytics.com,senthil.selva@global-analytics.com
+cc:sivaram.mutharasu@global-analytics.com
+MIME-Version:1.0
+Content-type: text/html
+Subject: """ + sub + """
+"""+htmlmsg
+        smtpObj=smtplib.SMTP('localhost')
+        smtpObj.sendmail(sender,receiver,message)
+
+if __name__=='__main__':
+        loan_list()

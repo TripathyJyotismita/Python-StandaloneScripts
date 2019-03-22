@@ -1,0 +1,58 @@
+import csv
+import os
+os.environ['PYTHON_EGG_CACHE'] = os.getcwd()
+os.sys.path.append("/public/collections/codes")
+import MySQLdb
+db=MySQLdb.connect('localhost','opsuser','OPS!@#','ukl_collections')
+curs=db.cursor()
+import email, getpass, imaplib
+import datetime
+import re
+from cStringIO import StringIO
+detach_dir = '.'
+import smtplib
+
+db=MySQLdb.connect('localhost','opsuser','OPS!@#','TMS_Data')
+curs=db.cursor()
+
+def gen_table(Header,Tuple,opt="center"):
+    html_str=''
+    if Tuple:
+        if Header:
+            html_str+='<table style="font-size:14px;" border=1 cellspacing=0><tr>'
+            for value in Header:
+                html_str+='<th bgcolor="yellowgreen" align="'+opt+'">'+str(value)+'</th>'
+            html_str+='</tr>\n'
+        for rows in Tuple:
+            html_str+='\n<tr>'
+            for value in rows:
+                html_str+='<td align="'+opt+'">'+str(value)+'</td>'
+            html_str+='</tr>'
+        html_str+='</table>'
+    else:
+        html_str='<br /> --No Data--'
+    return html_str
+
+def sendmail(sender,receiver,sub,htmlmsg,cc=[]):
+        message="""From:<rajkumar.v@global-analytics.com>
+To:"""+','.join(receiver) + """
+cc:"""+','.join(cc) + """
+MIME-Version:1.0
+Content-type: text/html
+Subject: """ + sub + """
+"""+htmlmsg
+        smtpObj=smtplib.SMTP('localhost')
+        smtpObj.sendmail(sender,receiver+cc,message)
+
+if __name__=='__main__':
+        selectquery="select ifnull(dca_name,'Total'),ct from (select dca_name,count(*) ct from TMS_Data.Collection_Info join GCMS_Data.gcm_case on loan_id=entity_id where override_flag=1 and closure_cd in ('SIF','PIF') and status_cd='RECOVERIES' group by 1 with rollup)tmp;"
+        curs.execute(selectquery)
+        get=curs.fetchall()
+        print get
+        Header=['DCA Name','List Of Loans']
+        mailcontent = "<font face='arial' size = 2>Hi,<br><br>PFB the Collection Agency wise count of loans for which Closure Code has been received but were not closed:<br/>"+gen_table(Header,get)+"<br/><br/>Thanks,<br/>Rajkumar.<br>"
+        to=['senthil.selva@global-analytics.com']
+        cc=['rajkumar.v@global-analytics.com','sheik.h@global-analytics.com']
+        sender = "rajkumar.v@global-analytics.com"
+        subject='Collection : Closure Daily Report'
+        sendmail(sender,to,subject,mailcontent,cc)
